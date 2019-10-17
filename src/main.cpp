@@ -18,9 +18,10 @@ U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE | U8G_I2C_OPT_DEV_0); // A4-SDA & A5-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int dist;
-const int minDist = 50;  // cm
-const int maxDist = 200; // cm
+const int minDist = 40;  // cm
+const int maxDist = 280; // cm
 int percent;
+const char percSymb[2] = "%";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -78,9 +79,11 @@ void loop()
 
             char tmp_string[10];
             itoa(percent, tmp_string, 10);
-            u8g.drawStr(27, 45, tmp_string);
+            strcat(tmp_string, percSymb);
+            //Serial.println(u8g.getStrWidth(tmp_string));
+            u8g.drawStr((128 - u8g.getStrWidth(tmp_string)) / 2, 45, tmp_string);
         } while (u8g.nextPage());
     }
 
-    delay(200);
+    delay(150);
 }
