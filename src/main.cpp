@@ -6,18 +6,14 @@ UltraSonicDistanceSensor hcsr04(12, 11); //(trig, echo)
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE | U8G_I2C_OPT_DEV_0); // A4-SDA & A5-SCL
 
-//OLED.setFont(u8g_font_unifont); // original
-//OLED.setFont(u8g_font_osb21);   // extrem groß "Hello Wor" rest fehlt
-//OLED.setFont(u8g_font_helvR14); // Helvetica sehr groß
-//OLED.setFont(u8g_font_helvR12); // Helvetica groß
-//OLED.setFont(u8g_font_helvR10); // Helvetica relativ groß
-//OLED.setFont(u8g_font_helvR08); // Helvetica mittel
-//OLED.setFont(u8g_font_04b_03r); // Klein
-//OLED.setFont(u8g_font_04b_03br); // Mini
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define Zpin 5
+#define TWpin 4
+
 int dist;
+bool mode = false;
+bool lastMode = mode;
 const int minDist = 40;  // cm
 const int maxDist = 280; // cm
 int percent;
@@ -58,32 +54,104 @@ int calcPercent(int d, int min, int max)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void OLEDprint()
+{
+    u8g.firstPage();
+    do
+    {
+        u8g.setFont(u8g_font_helvR14);
+        if (mode == false)
+        {
+            u8g.drawStr((128 - 67) / 2, 16, "Zisterne");
+        }
+        else
+        {
+            u8g.drawStr((128 - 100) / 2, 16, "Trinkwasser");
+        }
+
+        u8g.setFont(u8g_font_osb29);
+        char tmp_string[10];
+        itoa(percent, tmp_string, 10);
+        strcat(tmp_string, percSymb);
+        //Serial.println(dist);
+        u8g.drawStr((128 - u8g.getStrWidth(tmp_string)) / 2, 55, tmp_string);
+    } while (u8g.nextPage());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void updatePumpMode()
+{
+    if (mode != lastMode)
+    {
+
+    if (mode == false)
+    {
+        digitalWrite(Zpin, LOW);
+        delay(100);
+        digitalWrite(Zpin, HIGH);
+    }
+    else
+    {
+        digitalWrite(TWpin, LOW);
+        delay(100);
+        digitalWrite(TWpin, HIGH);
+    }
+
+    lastMode = mode;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void setup()
 {
-    u8g.begin();
+    pinMode(TWpin, OUTPUT);
+    pinMode(Zpin, OUTPUT);
+
+    digitalWrite(TWpin, HIGH);
+    digitalWrite(Zpin, LOW);  //
+    delay(10);                // als erstes immer auf Zisterne schalten
+    digitalWrite(Zpin, HIGH); //
+
     //Serial.begin(9600);
+
+    u8g.begin();
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop()
 {
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+a:
     dist = hcsr04.measureDistanceCm();
     percent = calcPercent(dist, minDist, maxDist);
-    if (dist > 5)
+    if (dist < 10)
     {
-        //Serial.println(dist);
-
-        u8g.firstPage();
-        do
-        {
-            u8g.setFont(u8g_font_osb29);
-
-            char tmp_string[10];
-            itoa(percent, tmp_string, 10);
-            strcat(tmp_string, percSymb);
-            //Serial.println(u8g.getStrWidth(tmp_string));
-            u8g.drawStr((128 - u8g.getStrWidth(tmp_string)) / 2, 45, tmp_string);
-        } while (u8g.nextPage());
+        delay(150);
+        goto a;
     }
 
-    delay(150);
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    if (percent <= 10)
+    {
+        mode = true;
+    }
+    else
+    {
+        mode = false;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //Serial.println(dist);
+    OLEDprint();
+
+    updatePumpMode();
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    delay(200);
 }
