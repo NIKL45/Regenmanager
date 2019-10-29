@@ -1,17 +1,26 @@
 #include <Arduino.h>
 #include <HCSR04.h>
 #include "U8glib.h"
+#include "OneButton.h"
 
 UltraSonicDistanceSensor hcsr04(12, 11); //(trig, echo)
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE | U8G_I2C_OPT_DEV_0); // A4-SDA & A5-SCL
 
+OneButton button(A1, true);
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define Zpin 5
 #define TWpin 4
+#define RelayTime 10
+#define SysOpin 3
+#define BuzzerPin 9
 
+unsigned long preMillis;
 int dist;
+bool mute = false;
+bool alarm = false;
 bool mode = false;
 bool lastMode = mode;
 const int minDist = 40;  // cm
@@ -66,7 +75,30 @@ void OLEDprint()
         }
         else
         {
-            u8g.drawStr((128 - 100) / 2, 16, "Trinkwasser");
+            if (alarm)
+            {
+                if ((millis() - preMillis) > 1500)
+                {
+                    u8g.setColorIndex(1);
+                    u8g.drawBox(0, 0, 128, 64);
+                    u8g.setColorIndex(0);
+                    u8g.drawStr(14, 16, "! Ueberlauf !");
+                    if ((millis() - preMillis) > 3000)
+                    {
+                        preMillis = millis();
+                    }
+                }
+                else
+                {
+                    u8g.setColorIndex(1);
+                    u8g.drawStr((128 - 100) / 2, 16, "Trinkwasser");
+                }
+            }
+            else
+            {
+                u8g.setColorIndex(1);
+                u8g.drawStr((128 - 100) / 2, 16, "Trinkwasser");
+            }
         }
 
         u8g.setFont(u8g_font_osb29);
@@ -85,20 +117,55 @@ void updatePumpMode()
     if (mode != lastMode)
     {
 
-    if (mode == false)
-    {
-        digitalWrite(Zpin, LOW);
-        delay(100);
-        digitalWrite(Zpin, HIGH);
-    }
-    else
-    {
-        digitalWrite(TWpin, LOW);
-        delay(100);
-        digitalWrite(TWpin, HIGH);
-    }
+        if (mode == false)
+        {
+            digitalWrite(Zpin, LOW);
+            delay(RelayTime);
+            digitalWrite(Zpin, HIGH);
+        }
+        else
+        {
+            digitalWrite(TWpin, LOW);
+            delay(RelayTime);
+            digitalWrite(TWpin, HIGH);
+        }
 
-    lastMode = mode;
+        lastMode = mode;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mute()
+{
+    mute = true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Reset()
+{
+    alarm = false;
+    mute = false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CheckAlarm()
+{
+    if (alarm)
+    {
+        if (!mute)
+        {
+            if ((millis() - preMillis) > 2500)
+            {
+                tone(BuzzerPin, 3200);
+            }
+            else
+            {
+                noTone(BuzzerPin);
+            }
+        }
     }
 }
 
@@ -106,12 +173,20 @@ void updatePumpMode()
 
 void setup()
 {
+
     pinMode(TWpin, OUTPUT);
     pinMode(Zpin, OUTPUT);
+    pinMode(BuzzerPin, OUTPUT);
+    pinMode(SysOpin, INPUT_PULLUP);
+
+    button.attachClick(Mute);
+    button.attachLongPressStart(Reset);
+
+    //attachInterrupt(digitalPinToInterrupt(3), systemOverflow, FALLING);
 
     digitalWrite(TWpin, HIGH);
     digitalWrite(Zpin, LOW);  //
-    delay(10);                // als erstes immer auf Zisterne schalten
+    delay(RelayTime);         // als erstes immer auf Zisterne schalten
     digitalWrite(Zpin, HIGH); //
 
     //Serial.begin(9600);
@@ -133,20 +208,44 @@ a:
         goto a;
     }
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////// TW / Z //////////////////////////////////////////////////////
 
-    if (percent <= 10)
+    if (!alarm)
     {
-        mode = true;
+
+        if (percent <= 10)
+        {
+            mode = true;
+        }
+        else if (percent >= 15)
+        {
+            mode = false;
+        }
     }
     else
     {
-        mode = false;
+        mode = true;
     }
+    /////////////////////////////////////////////// SystemOverflow //////////////////////////////////////////////
+
+    if (digitalRead(SysOpin) == LOW)
+    {
+        alarm = true;
+    }
+    /*     else
+    {
+        alarm = false;
+        mute = false;
+    } */
+
+    CheckAlarm();
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //Serial.println(dist);
+
+    button.tick();
+
     OLEDprint();
 
     updatePumpMode();
