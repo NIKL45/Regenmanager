@@ -3,12 +3,6 @@
 #include "U8glib.h"
 #include "OneButton.h"
 
-UltraSonicDistanceSensor hcsr04(12, 11); //(trig, echo)
-
-U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE | U8G_I2C_OPT_DEV_0); // A4-SDA & A5-SCL
-
-OneButton button(A1, true);
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define Zpin 5
@@ -16,6 +10,17 @@ OneButton button(A1, true);
 #define RelayTime 10
 #define SysOpin 3
 #define BuzzerPin 9
+#define ButtonPin A2
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+UltraSonicDistanceSensor hcsr04(11, 12); //(trig, echo)
+
+U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE | U8G_I2C_OPT_DEV_0); // A4-SDA & A5-SCL
+
+OneButton button(ButtonPin, true);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 unsigned long preMillis;
 int dist;
@@ -119,15 +124,15 @@ void updatePumpMode()
 
         if (mode == false)
         {
-            digitalWrite(Zpin, LOW);
-            delay(RelayTime);
             digitalWrite(Zpin, HIGH);
+            delay(RelayTime);
+            digitalWrite(Zpin, LOW);
         }
         else
         {
-            digitalWrite(TWpin, LOW);
-            delay(RelayTime);
             digitalWrite(TWpin, HIGH);
+            delay(RelayTime);
+            digitalWrite(TWpin, LOW);
         }
 
         lastMode = mode;
@@ -139,6 +144,7 @@ void updatePumpMode()
 void Mute()
 {
     mute = true;
+    noTone(BuzzerPin);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -147,6 +153,7 @@ void Reset()
 {
     alarm = false;
     mute = false;
+    noTone(BuzzerPin);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +164,7 @@ void CheckAlarm()
     {
         if (!mute)
         {
-            if ((millis() - preMillis) > 2500)
+            if ((millis() - preMillis) > 2650)
             {
                 tone(BuzzerPin, 3200);
             }
@@ -178,16 +185,17 @@ void setup()
     pinMode(Zpin, OUTPUT);
     pinMode(BuzzerPin, OUTPUT);
     pinMode(SysOpin, INPUT_PULLUP);
+    pinMode(ButtonPin, INPUT_PULLUP);
 
     button.attachClick(Mute);
     button.attachLongPressStart(Reset);
 
     //attachInterrupt(digitalPinToInterrupt(3), systemOverflow, FALLING);
 
-    digitalWrite(TWpin, HIGH);
-    digitalWrite(Zpin, LOW);  //
+    digitalWrite(TWpin, LOW);
+    digitalWrite(Zpin, HIGH);  //
     delay(RelayTime);         // als erstes immer auf Zisterne schalten
-    digitalWrite(Zpin, HIGH); //
+    digitalWrite(Zpin, LOW); //
 
     //Serial.begin(9600);
 
