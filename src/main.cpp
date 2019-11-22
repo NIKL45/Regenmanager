@@ -28,7 +28,7 @@ bool mute = false;
 bool alarm = false;
 bool mode = false;
 bool lastMode = mode;
-const int minDist = 40;  // cm
+const int minDist = 30;  // cm
 const int maxDist = 280; // cm
 int percent;
 const char percSymb[2] = "%";
@@ -212,7 +212,9 @@ a:
     percent = calcPercent(dist, minDist, maxDist);
     if (dist < 10)
     {
-        delay(150);
+        digitalWrite(13, HIGH);
+        delay(100);
+        digitalWrite(13, LOW);
         goto a;
     }
 
@@ -260,5 +262,5 @@ a:
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    delay(200);
+    delay(500);
 }
