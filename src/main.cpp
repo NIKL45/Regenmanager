@@ -31,6 +31,7 @@ bool lastMode = mode;
 const int minDist = 30;  // cm
 const int maxDist = 280; // cm
 int percent;
+int lastPercent = 120; //> 100%
 const char percSymb[2] = "%";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,10 +211,11 @@ void loop()
 a:
     dist = hcsr04.measureDistanceCm();
     percent = calcPercent(dist, minDist, maxDist);
-    if (dist < 10)
+    //if (dist < 10 || (percent - lastPercent) > 5 ) 
+    if (dist < 10) 
     {
         digitalWrite(13, HIGH);
-        delay(100);
+        delay(2000);
         digitalWrite(13, LOW);
         goto a;
     }
@@ -261,6 +263,6 @@ a:
     updatePumpMode();
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    delay(500);
+    lastPercent = percent; 
+    delay(2000);
 }
