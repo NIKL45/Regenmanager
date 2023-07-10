@@ -29,7 +29,7 @@ bool alarm = false;
 bool mode = false;
 bool lastMode = mode;
 const int minDist = 30;  // cm
-const int maxDist = 280; // cm
+const int maxDist = 250; // cm
 int percent;
 int lastPercent = 120; //> 100%
 const char percSymb[2] = "%";
